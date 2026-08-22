@@ -63,67 +63,87 @@ function requireEmployee(employeeId: string): Employee {
   return employee;
 }
 
+async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.headers || {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const errorMsg = data && typeof data.error === "string" ? data.error : "Request failed";
+    throw new ApiError(errorMsg);
+  }
+
+  return data as T;
+}
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 
 export async function signIn(input: SignInInput): Promise<Session> {
-  await delay();
-  const account = db.users.find(
-    (u) => u.email.toLowerCase() === input.email.trim().toLowerCase(),
+  const data = await fetchApi<{ user: { id: string; employeeId: string; email: string; role: string } }>(
+    "/api/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email: input.email, password: input.password }),
+    }
   );
-  if (!account || account.password !== input.password) {
-    throw new ApiError("Invalid email or password.");
+
+  try {
+    const meData = await fetchApi<{ user: any }>("/api/auth/me");
+    const u = meData.user;
+    const name = u.profile ? `${u.profile.firstName} ${u.profile.lastName}`.trim() : u.email;
+    return {
+      user: {
+        id: u.id,
+        employeeCode: u.employeeId,
+        name: name || u.email,
+        email: u.email,
+        role: u.role.toLowerCase() as Role,
+      },
+    };
+  } catch {
+    return {
+      user: {
+        id: data.user.id,
+        employeeCode: data.user.employeeId,
+        name: data.user.email,
+        email: data.user.email,
+        role: data.user.role.toLowerCase() as Role,
+      },
+    };
   }
-  if (!account.verified) {
-    throw new ApiError("Please verify your email before signing in.");
-  }
-  const employee = requireEmployee(account.id);
-  return {
-    user: {
-      id: employee.id,
-      employeeCode: employee.employeeCode,
-      name: employee.name,
-      email: account.email,
-      role: account.role,
-    },
-  };
 }
 
 export async function signUp(input: SignUpInput): Promise<SignUpResult> {
-  await delay();
-  const code = input.employeeCode.trim().toUpperCase();
-  const employee = db.employees.find((e) => e.employeeCode === code);
-  if (!employee) {
-    throw new ApiError("Employee ID not found. Ask HR to confirm your record.");
-  }
-  if (db.users.some((u) => u.id === employee.id)) {
-    throw new ApiError("An account already exists for this employee ID.");
-  }
-  if (db.users.some((u) => u.email.toLowerCase() === input.email.trim().toLowerCase())) {
-    throw new ApiError("This email is already registered.");
-  }
-  if (!isPasswordValid(input.password)) {
-    throw new ApiError("Password does not meet the security rules.");
-  }
-  db.users.push({
-    id: employee.id,
-    email: input.email.trim(),
-    password: input.password,
-    role: input.role,
-    verified: false,
+  const nameParts = input.email.split("@")[0].split(".");
+  const firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : input.employeeCode;
+  const lastName = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : "Employee";
+
+  const data = await fetchApi<{ message: string; user: { email: string } }>("/api/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({
+      employeeId: input.employeeCode,
+      email: input.email,
+      password: input.password,
+      role: input.role.toUpperCase(),
+      firstName,
+      lastName,
+    }),
   });
-  return { requiresVerification: true, email: input.email.trim() };
+
+  return { requiresVerification: true, email: data.user.email };
 }
 
 /** Mock of the "verify my email" link for the demo flow. */
 export async function verifyEmail(email: string): Promise<void> {
-  await delay();
-  const account = db.users.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-  );
-  if (!account) throw new ApiError("No pending account found for this email.");
-  account.verified = true;
+  // In real REST API flow, email verification happens via token link.
 }
 
 // ---------------------------------------------------------------------------
