@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  employeeId    String   @unique
+  email         String   @unique
+  passwordHash  String
+  role          String   @default("EMPLOYEE")
+  emailVerified Boolean  @default(false)
+  verifyToken   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profile    EmployeeProfile?
+  attendance AttendanceRecord[]
+  leaves     LeaveRequest[]
+  reviewsGiven LeaveRequest[]  @relation("LeaveReviewer")
+}
+
+model EmployeeProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  phone          String?
+  address        String?
+  position       String?
+  department     String?
+  joinedDate     DateTime?
+  profilePicture String?
+  documents      String?
+
+  salary SalaryStructure?
+}
+
+model AttendanceRecord {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  checkIn   DateTime?
+  checkOut  DateTime?
+  status    String    @default("PRESENT")
+
+  @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String
+  startDate     DateTime
+  endDate       DateTime
+  remarks       String?
+  status        String    @default("PENDING")
+  reviewerId    String?
+  reviewer      User?     @relation("LeaveReviewer", fields: [reviewerId], references: [id])
+  reviewComment String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model SalaryStructure {
+  id            String   @id @default(cuid())
+  profileId     String   @unique
+  profile       EmployeeProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  baseSalary    Float
+  allowances    Float    @default(0)
+  deductions    Float    @default(0)
+  effectiveFrom DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
