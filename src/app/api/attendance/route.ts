@@ -9,10 +9,11 @@ export async function GET(req: NextRequest) {
     const session = await requireUser();
     const params = req.nextUrl.searchParams;
 
-    let targetUserId: string | undefined;
-    if (params.get("userId")) {
-      if (session.role !== "ADMIN") throw new HttpError(403, "Admin access required");
-      targetUserId = params.get("userId")!;
+    let targetUserId: string | undefined = session.id;
+    if (session.role === "ADMIN") {
+      targetUserId = params.get("userId") || undefined;
+    } else if (params.get("userId")) {
+      throw new HttpError(403, "Employees can only view their own attendance");
     }
 
     const view = params.get("view") || "daily";

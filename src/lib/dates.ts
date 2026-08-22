@@ -7,7 +7,7 @@ export function startOfDay(d: Date = new Date()) {
 export function startOfWeek(d: Date = new Date()) {
   const copy = startOfDay(d);
   const day = copy.getDay();
-  const diff = day === 0 ? -6 : 1;
+  const diff = day === 0 ? -6 : 1 - day;
   copy.setDate(copy.getDate() + diff);
   return copy;
 }
