@@ -93,114 +93,67 @@ Dayflow provides different capabilities based on the user's role:
 
 ## 🚀 Getting Started
 
-### 1. Clone the project
+### Setup Workflow
 
-```bash
-git clone <your-repository-url>
-cd dayflow
-```
+Follow these steps in order to set up your local development environment:
 
-### 2. Install dependencies
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```bash
-npm install
-```
+2. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   ```
 
-### 3. Configure environment variables
+3. **Push database schema & seed initial data**
+   ```bash
+   npm run db:push
+   npm run db:seed
+   ```
 
-Create your local environment file:
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
 
-```bash
-cp .env.example .env
-```
-
-Configure the required `SMTP_*` values if email verification is enabled.
-
-### 4. Initialize the database
-
-```bash
-npm run db:push
-npm run db:seed
-```
-
-This creates the SQLite database and loads the demo data.
-
-### 5. Start Dayflow
-
-```bash
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
 ## 🔑 Demo Access
 
-Use the following accounts to explore different roles.
+Use the following accounts after running `npm run db:seed`:
 
-### 🛡️ Admin
-
-```text
-Email: admin@dayflow.com
-Password: Password123
-```
-
-Alternative:
-
-```text
-Email: alice@dayflow.com
-Password: Admin@1234
-```
-
-### 👤 Employee
-
-```text
-Email: arjun@dayflow.com
-Password: Password123
-```
-
-Alternative:
-
-```text
-Email: rahul@dayflow.com
-Password: Emp@1234
-```
-
-> ⚠️ Demo credentials are intended only for local development and testing.
+| Role | Email | Password |
+|---|---|---|
+| 🛡️ Admin / HR | `admin@dayflow.com` | `Password123` |
+| 👤 Employee | `arjun@dayflow.com` | `Password123` |
+| 👤 Employee | `priya@dayflow.com` | `Password123` |
 
 ---
 
 ## 📜 Available Commands
 
-| Command             | Purpose                      |
-| ------------------- | ---------------------------- |
-| `npm run dev`       | Start the development server |
-| `npm run build`     | Create a production build    |
-| `npm run start`     | Start the production server  |
-| `npm run lint`      | Run ESLint                   |
-| `npm run db:push`   | Apply Prisma schema changes  |
-| `npm run db:seed`   | Populate demo data           |
-| `npm run db:studio` | Launch Prisma Studio         |
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Next.js development server |
+| `npm run build` | Create optimized production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint checks |
+| `npm run test:dates` | Run date utility tests via `node:test` + `tsx` |
+| `npm run db:push` | Apply Prisma schema & generate client |
+| `npm run db:seed` | Populate database with demo records |
+| `npm run db:studio` | Open Prisma Studio GUI |
 
 ---
 
 ## 📚 Project Documentation
 
-Additional project documentation is available inside the repository:
-
-* **API Contract** → `docs/API.md`
-  REST endpoints, request payloads, and response structures.
-
-* **Architecture Decisions** → `DECISIONS.md`
-  Important technical and product decisions made during development.
-
-* **Contributor Tasks** → `TASKS.md`
-  Current backlog, development tasks, and future improvements.
+- 📄 **API Contract** → [`docs/API.md`](docs/API.md) — REST endpoints, payloads, and response interfaces.
+- 📐 **Architecture Decisions** → [`DECISIONS.md`](DECISIONS.md) — Append-only architecture log.
+- 🤝 **Contributing Guidelines** → [`CONTRIBUTING.md`](CONTRIBUTING.md) — Branch naming, commit formatting, and testing rules.
 
 ---
 
