@@ -159,3 +159,95 @@ export interface PayrollRow {
   salary: SalaryStructure;
   netPay: number;
 }
+
+// ---- API Response Views (matching docs/API.md) ----
+
+export interface SalaryView {
+  id: string;
+  profileId: string;
+  baseSalary: number;
+  allowances: number;
+  deductions: number;
+  effectiveFrom: string | Date;
+  updatedAt: string | Date;
+  profile?: {
+    firstName: string;
+    lastName: string;
+    user?: {
+      id: string;
+      employeeId: string;
+      email: string;
+    } | null;
+  } | null;
+}
+
+export interface ProfileView {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  address?: string | null;
+  position?: string | null;
+  department?: string | null;
+  joinedDate?: string | Date | null;
+  profilePicture?: string | null;
+  documents?: string | null;
+  salary?: SalaryView | null;
+}
+
+export interface SessionUser {
+  id: string;
+  employeeId: string;
+  email: string;
+  role: string;
+  createdAt?: string | Date;
+  profile?: ProfileView | null;
+}
+
+export interface AttendanceRecordView {
+  id: string;
+  userId: string;
+  date: string | Date;
+  checkIn: string | Date | null;
+  checkOut: string | Date | null;
+  status: string;
+  user?: {
+    employeeId: string;
+    email: string;
+    profile?: {
+      firstName: string;
+      lastName: string;
+    } | null;
+  } | null;
+}
+
+export interface LeaveRequestView {
+  id: string;
+  userId: string;
+  type: string;
+  startDate: string | Date;
+  endDate: string | Date;
+  remarks?: string | null;
+  status: string;
+  reviewerId?: string | null;
+  reviewComment?: string | null;
+  reviewedAt?: string | Date | null;
+  createdAt: string | Date;
+  user?: {
+    employeeId: string;
+    email: string;
+    profile?: {
+      firstName: string;
+      lastName: string;
+    } | null;
+  } | null;
+  reviewer?: {
+    employeeId: string;
+    profile?: {
+      firstName: string;
+      lastName: string;
+    } | null;
+  } | null;
+}
+

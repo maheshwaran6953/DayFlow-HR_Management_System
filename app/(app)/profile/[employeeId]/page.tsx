@@ -1,8 +1,9 @@
 import { ProfileView } from "@/components/profile/profile-view";
 
-export default async function ProfilePage({
+export default function ProfilePage({
   params,
-}: PageProps<"/profile/[employeeId]">) {
-  const { employeeId } = await params;
-  return <ProfileView employeeId={employeeId} />;
+}: {
+  params: { employeeId: string };
+}) {
+  return <ProfileView employeeId={params.employeeId} />;
 }

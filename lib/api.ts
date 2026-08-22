@@ -21,6 +21,25 @@ import { db } from "@/mocks/db";
 import { todayISO } from "@/lib/date";
 import { isPasswordValid } from "@/lib/password";
 
+export async function handle(fn: () => Promise<Response>) {
+  try {
+    return await fn();
+  } catch (err: any) {
+    if (err?.name === "ZodError" || err?.issues) {
+      const first = err.issues?.[0];
+      return Response.json(
+        { error: `${first?.path?.join(".") || "input"}: ${first?.message}` },
+        { status: 400 }
+      );
+    }
+    if (err?.status && typeof err.status === "number") {
+      return Response.json({ error: err.message }, { status: err.status });
+    }
+    console.error("[dayflow] unhandled API error:", err);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 /**
  * The single gateway between UI and "the server". Today every function
  * reads/writes fixtures from mocks/; on integration day these bodies are
