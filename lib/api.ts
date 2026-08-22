@@ -150,122 +150,156 @@ export async function verifyEmail(email: string): Promise<void> {
 // Employees / profile
 // ---------------------------------------------------------------------------
 
+function mapUserProfileToEmployee(u: any): Employee {
+  const p = u.profile || {};
+  const firstName = p.firstName || "";
+  const lastName = p.lastName || "";
+  const name = `${firstName} ${lastName}`.trim() || u.email;
+
+  return {
+    id: u.id,
+    employeeCode: u.employeeId,
+    name,
+    email: u.email,
+    role: u.role.toLowerCase() as Role,
+    avatarUrl: p.profilePicture || null,
+    status: "Active",
+    personal: {
+      dateOfBirth: "",
+      gender: "",
+      phone: p.phone || "",
+      address: p.address || "",
+    },
+    job: {
+      designation: p.position || "Employee",
+      department: p.department || "General",
+      employmentType: "Full-time",
+      joinedOn: p.joinedDate ? new Date(p.joinedDate).toISOString().split("T")[0] : "",
+      reportingManager: "HR",
+      workLocation: "Office",
+    },
+    salary: p.salary
+      ? {
+          basic: p.salary.baseSalary,
+          hra: 0,
+          allowances: p.salary.allowances,
+          deductions: p.salary.deductions,
+        }
+      : { basic: 0, hra: 0, allowances: 0, deductions: 0 },
+  };
+}
+
 export async function getEmployees(): Promise<Employee[]> {
-  await delay();
-  return structuredClone(db.employees);
+  const data = await fetchApi<{ employees: any[] }>("/api/profiles");
+  return data.employees.map(mapUserProfileToEmployee);
 }
 
 export async function getEmployee(employeeId: string): Promise<Employee> {
-  await delay();
-  return structuredClone(requireEmployee(employeeId));
+  const data = await fetchApi<{ user: any }>(`/api/profiles/${employeeId}`);
+  return mapUserProfileToEmployee(data.user);
 }
 
 export async function updateProfile(
   employeeId: string,
   patch: ProfilePatch,
 ): Promise<Employee> {
-  await delay();
-  const employee = requireEmployee(employeeId);
-  if (patch.name !== undefined) employee.name = patch.name;
-  if (patch.email !== undefined) employee.email = patch.email;
-  if (patch.avatarUrl !== undefined) {
-    employee.avatarUrl = patch.avatarUrl === "" ? null : patch.avatarUrl;
+  const body: Record<string, any> = {};
+  if (patch.name) {
+    const parts = patch.name.trim().split(" ");
+    body.firstName = parts[0];
+    if (parts.length > 1) body.lastName = parts.slice(1).join(" ");
   }
-  Object.assign(employee.personal, patch.personal ?? {});
-  Object.assign(employee.job, patch.job ?? {});
-  if (patch.salary) employee.salary = { ...patch.salary };
-  return structuredClone(employee);
+  if (patch.avatarUrl !== undefined) body.profilePicture = patch.avatarUrl || "";
+  if (patch.personal?.phone !== undefined) body.phone = patch.personal.phone;
+  if (patch.personal?.address !== undefined) body.address = patch.personal.address;
+  if (patch.job?.designation !== undefined) body.position = patch.job.designation;
+  if (patch.job?.department !== undefined) body.department = patch.job.department;
+
+  await fetchApi(`/api/profiles/${employeeId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+  return getEmployee(employeeId);
 }
 
-/**
- * Employee self-service edit: address/phone/picture only.
- * Kept as its own endpoint-shaped function so the backend can enforce
- * field-level permissions independently of updateProfile.
- */
 export async function updateOwnContactInfo(
   employeeId: string,
   patch: ContactPatch,
 ): Promise<Employee> {
-  await delay();
-  const employee = requireEmployee(employeeId);
-  employee.personal.phone = patch.phone;
-  employee.personal.address = patch.address;
-  employee.avatarUrl = patch.avatarUrl === "" ? null : patch.avatarUrl;
-  return structuredClone(employee);
+  await fetchApi(`/api/profiles/${employeeId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      phone: patch.phone,
+      address: patch.address,
+      profilePicture: patch.avatarUrl,
+    }),
+  });
+  return getEmployee(employeeId);
 }
 
 export async function getDocuments(employeeId: string): Promise<EmployeeDocument[]> {
-  await delay();
-  requireEmployee(employeeId);
-  return structuredClone(db.documents[employeeId] ?? []);
+  try {
+    const data = await fetchApi<{ user: any }>(`/api/profiles/${employeeId}`);
+    const docsStr = data.user?.profile?.documents;
+    if (!docsStr) return [];
+    return JSON.parse(docsStr);
+  } catch {
+    return [];
+  }
 }
 
 export async function getRecentActivity(session: Session): Promise<ActivityItem[]> {
-  await delay(120);
   const now = Date.now();
   const hoursAgo = (h: number) => new Date(now - h * 60 * 60 * 1000).toISOString();
 
   if (session.user.role === "admin") {
-    const pending = db.leaves.filter((l) => l.status === "pending").length;
-    return [
-      {
-        id: "act-a1",
-        kind: "leave",
-        message: `${pending} leave request${pending === 1 ? "" : "s"} awaiting approval`,
-        at: hoursAgo(1),
-      },
-      {
-        id: "act-a2",
-        kind: "profile",
-        message: "David Souza joined Engineering (probation period)",
-        at: hoursAgo(26),
-      },
-      {
-        id: "act-a3",
-        kind: "payroll",
-        message: "Salary structures locked for this cycle",
-        at: hoursAgo(50),
-      },
-      {
-        id: "act-a4",
-        kind: "attendance",
-        message: "Last month attendance summary is ready for review",
-        at: hoursAgo(74),
-      },
-    ];
+    try {
+      const leavesData = await fetchApi<{ requests: any[] }>("/api/leaves?status=PENDING");
+      const pending = leavesData.requests.length;
+      return [
+        {
+          id: "act-a1",
+          kind: "leave",
+          message: `${pending} leave request${pending === 1 ? "" : "s"} awaiting approval`,
+          at: hoursAgo(1),
+        },
+        {
+          id: "act-a2",
+          kind: "profile",
+          message: "Employee profile management system active",
+          at: hoursAgo(26),
+        },
+        {
+          id: "act-a3",
+          kind: "payroll",
+          message: "Payroll structure synced with database",
+          at: hoursAgo(50),
+        },
+      ];
+    } catch {
+      return [];
+    }
   }
 
-  const mine = db.leaves
-    .filter((l) => l.employeeId === session.user.id)
-    .sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))
-    .slice(0, 3)
-    .map((l, i): ActivityItem => ({
-      id: `act-${l.id}`,
-      kind: "leave",
-      message:
-        l.status === "approved"
-          ? `Your ${l.type} leave (${l.fromDate} to ${l.toDate}) was approved`
-          : l.status === "rejected"
-            ? `Your ${l.type} leave (${l.fromDate} to ${l.toDate}) was rejected`
-            : `Your ${l.type} leave (${l.fromDate} to ${l.toDate}) is pending approval`,
-      at: hoursAgo(i === 0 ? 2 : i * 30 + 5),
-    }));
-
-  return [
-    ...mine,
-    {
-      id: "act-e9",
-      kind: "payroll",
-      message: "Payslip for last month is available",
-      at: hoursAgo(49),
-    },
-    {
-      id: "act-e10",
-      kind: "attendance",
-      message: "You completed 4 weeks of full attendance",
-      at: hoursAgo(96),
-    },
-  ];
+  try {
+    const leavesData = await fetchApi<{ requests: any[] }>("/api/leaves");
+    return leavesData.requests
+      .slice(0, 3)
+      .map((l: any, i: number): ActivityItem => ({
+        id: `act-${l.id}`,
+        kind: "leave",
+        message:
+          l.status === "APPROVED"
+            ? `Your ${l.type.toLowerCase()} leave was approved`
+            : l.status === "REJECTED"
+              ? `Your ${l.type.toLowerCase()} leave was rejected`
+              : `Your ${l.type.toLowerCase()} leave is pending approval`,
+        at: hoursAgo(i === 0 ? 2 : i * 30 + 5),
+      }));
+  } catch {
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
