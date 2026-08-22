@@ -1,0 +1,95 @@
+import type { LeaveRequest } from "@/types";
+import { addDaysISO, dateTimeAt, todayISO } from "@/lib/date";
+
+const TODAY = todayISO();
+
+/**
+ * Seeded leave requests. Dates are generated relative to "today" so the
+ * demo data always looks current. Covers every status and type.
+ */
+export const LEAVES_SEED: LeaveRequest[] = [
+  {
+    id: "lv-001",
+    employeeId: "emp-002",
+    type: "sick",
+    fromDate: addDaysISO(TODAY, -2),
+    toDate: addDaysISO(TODAY, -2),
+    remarks: "Fever and cold, consulted a doctor.",
+    status: "approved",
+    reviewedBy: "Alice Fernandes",
+    reviewComment: "Get well soon.",
+    appliedAt: dateTimeAt(addDaysISO(TODAY, -3), 10, 24),
+  },
+  {
+    id: "lv-002",
+    employeeId: "emp-003",
+    type: "paid",
+    fromDate: TODAY,
+    toDate: TODAY,
+    remarks: "Family function out of town.",
+    status: "approved",
+    reviewedBy: "Alice Fernandes",
+    reviewComment: "Approved. Enjoy!",
+    appliedAt: dateTimeAt(addDaysISO(TODAY, -5), 16, 45),
+  },
+  {
+    id: "lv-003",
+    employeeId: "emp-004",
+    type: "unpaid",
+    fromDate: addDaysISO(TODAY, 6),
+    toDate: addDaysISO(TODAY, 7),
+    remarks: "Personal travel.",
+    status: "pending",
+    reviewedBy: null,
+    reviewComment: null,
+    appliedAt: dateTimeAt(addDaysISO(TODAY, -1), 11, 5),
+  },
+  {
+    id: "lv-004",
+    employeeId: "emp-003",
+    type: "sick",
+    fromDate: addDaysISO(TODAY, 1),
+    toDate: addDaysISO(TODAY, 1),
+    remarks: "Dental surgery scheduled.",
+    status: "pending",
+    reviewedBy: null,
+    reviewComment: null,
+    appliedAt: dateTimeAt(TODAY, 9, 12),
+  },
+  {
+    id: "lv-005",
+    employeeId: "emp-005",
+    type: "paid",
+    fromDate: addDaysISO(TODAY, -8),
+    toDate: addDaysISO(TODAY, -6),
+    remarks: "Trip to hometown.",
+    status: "approved",
+    reviewedBy: "Alice Fernandes",
+    reviewComment: null,
+    appliedAt: dateTimeAt(addDaysISO(TODAY, -15), 14, 30),
+  },
+  {
+    id: "lv-006",
+    employeeId: "emp-005",
+    type: "unpaid",
+    fromDate: addDaysISO(TODAY, 4),
+    toDate: addDaysISO(TODAY, 6),
+    remarks: "Long weekend extension.",
+    status: "rejected",
+    reviewedBy: "Alice Fernandes",
+    reviewComment: "Month-end closing, team capacity is low.",
+    appliedAt: dateTimeAt(addDaysISO(TODAY, -4), 9, 50),
+  },
+  {
+    id: "lv-007",
+    employeeId: "emp-002",
+    type: "paid",
+    fromDate: addDaysISO(TODAY, 10),
+    toDate: addDaysISO(TODAY, 12),
+    remarks: "Wedding in the family.",
+    status: "pending",
+    reviewedBy: null,
+    reviewComment: null,
+    appliedAt: dateTimeAt(TODAY, 8, 40),
+  },
+];
