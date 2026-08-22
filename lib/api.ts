@@ -427,16 +427,59 @@ export async function reviewLeave(
 // ---------------------------------------------------------------------------
 
 export async function getPayrollRows(): Promise<PayrollRow[]> {
-  await delay(180);
-  return db.employees.map((e): PayrollRow => ({
-    employeeId: e.id,
-    employeeCode: e.employeeCode,
-    name: e.name,
-    designation: e.job.designation,
-    department: e.job.department,
-    salary: { ...e.salary },
-    netPay: e.salary.basic + e.salary.hra + e.salary.allowances - e.salary.deductions,
-  }));
+  const data = await fetchApi<{ salaries?: any[]; salary?: any }>("/api/payroll");
+
+  if (data.salaries) {
+    return data.salaries.map((s: any): PayrollRow => {
+      const p = s.profile || {};
+      const u = p.user || {};
+      const name = `${p.firstName || ""} ${p.lastName || ""}`.trim() || u.email || "";
+      const baseSalary = s.baseSalary || 0;
+      const allowances = s.allowances || 0;
+      const deductions = s.deductions || 0;
+
+      return {
+        employeeId: u.id || p.userId || s.profileId,
+        employeeCode: u.employeeId || "",
+        name,
+        designation: p.position || "Employee",
+        department: p.department || "General",
+        salary: {
+          basic: baseSalary,
+          hra: 0,
+          allowances,
+          deductions,
+        },
+        netPay: baseSalary + allowances - deductions,
+      };
+    });
+  }
+
+  if (data.salary) {
+    const s = data.salary;
+    const baseSalary = s.baseSalary || 0;
+    const allowances = s.allowances || 0;
+    const deductions = s.deductions || 0;
+
+    return [
+      {
+        employeeId: s.profileId,
+        employeeCode: "",
+        name: "My Salary",
+        designation: "",
+        department: "",
+        salary: {
+          basic: baseSalary,
+          hra: 0,
+          allowances,
+          deductions,
+        },
+        netPay: baseSalary + allowances - deductions,
+      },
+    ];
+  }
+
+  return [];
 }
 
 export async function updateSalaryStructure(
@@ -444,17 +487,14 @@ export async function updateSalaryStructure(
   actorRole: Role,
   salary: SalaryStructure,
 ): Promise<Employee> {
-  await delay();
-  if (actorRole !== "admin") {
-    throw new ApiError("Only Admin/HR can update salary structures.");
-  }
-  const employee = requireEmployee(employeeId);
-  const fields: (keyof SalaryStructure)[] = ["basic", "hra", "allowances", "deductions"];
-  for (const f of fields) {
-    if (!Number.isFinite(salary[f]) || salary[f] < 0) {
-      throw new ApiError("Amounts must be zero or positive numbers.");
-    }
-  }
-  employee.salary = { ...salary };
-  return structuredClone(employee);
+  const baseSalary = (salary.basic || 0) + (salary.hra || 0);
+  await fetchApi(`/api/payroll/${employeeId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      baseSalary,
+      allowances: salary.allowances || 0,
+      deductions: salary.deductions || 0,
+    }),
+  });
+  return getEmployee(employeeId);
 }
