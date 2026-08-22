@@ -2,7 +2,9 @@
 
 > Every workday, perfectly aligned.
 
-Dayflow Human Resource Management System: employee onboarding, profile management, attendance tracking, leave management, and payroll visibility with role-based access for Admin/HR officers and Employees.
+Human Resource Management System: employee onboarding, profile management,
+attendance tracking, leave management and payroll visibility with role-based
+access for Admin/HR officers and Employees.
 
 **Status**: backend API complete (see [docs/API.md](docs/API.md)) · frontend in progress
 
@@ -29,6 +31,6 @@ Demo logins: `admin@dayflow.com` / `Password123` · `arjun@dayflow.com` / `Passw
 
 ## Docs
 
-- [API contract](docs/API.md) â€” every endpoint, request/response shapes
-- [Decisions log](DECISIONS.md) â€” why things are the way they are
-- [Contributor tasks](TASKS.md) â€” pick a quick win
+- [API contract](docs/API.md) — every endpoint, request/response shapes
+- [Decisions log](DECISIONS.md) — why things are the way they are
+- [Contributor tasks](TASKS.md) — pick a quick win
