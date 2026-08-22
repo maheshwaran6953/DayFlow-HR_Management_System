@@ -1,10 +1,8 @@
 "use client";
 
 import * as React from "react";
-import type { Session, SignInInput } from "@/types";
+import type { Role, Session, SignInInput } from "@/types";
 import { signIn as apiSignIn } from "@/lib/api";
-
-const STORAGE_KEY = "dayflow.session";
 
 interface SessionContextValue {
   session: Session | null;
@@ -19,42 +17,59 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = React.useState<Session | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    // Resolve in a microtask so hydration isn't blocked by storage reads.
-    void Promise.resolve().then(() => {
-      if (cancelled) return;
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw) setSession(JSON.parse(raw) as Session);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
+  const fetchSession = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const u = data.user;
+          const name = u.profile ? `${u.profile.firstName} ${u.profile.lastName}`.trim() : u.email;
+          const userSession: Session = {
+            user: {
+              id: u.id,
+              employeeCode: u.employeeId,
+              name: name || u.email,
+              email: u.email,
+              role: u.role.toLowerCase() as Role,
+            },
+          };
+          setSession(userSession);
+          return userSession;
+        }
       }
+      setSession(null);
+      return null;
+    } catch {
+      setSession(null);
+      return null;
+    } finally {
       setIsLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    }
   }, []);
 
-  const persist = React.useCallback((next: Session | null) => {
-    setSession(next);
-    if (next) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    else window.localStorage.removeItem(STORAGE_KEY);
-  }, []);
+  React.useEffect(() => {
+    void fetchSession();
+  }, [fetchSession]);
 
   const signIn = React.useCallback(
     async (input: SignInInput) => {
       const next = await apiSignIn(input);
-      persist(next);
-      return next;
+      const current = await fetchSession();
+      const s = current || next;
+      setSession(s);
+      return s;
     },
-    [persist],
+    [fetchSession],
   );
 
-  const signOut = React.useCallback(() => {
-    persist(null);
-  }, [persist]);
+  const signOut = React.useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setSession(null);
+    }
+  }, []);
 
   const value = React.useMemo(
     () => ({ session, isLoading, signIn, signOut }),

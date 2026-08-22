@@ -58,17 +58,6 @@ export default function SignUpPage() {
     }
   }
 
-  async function handleMockVerify() {
-    if (!pendingEmail) return;
-    try {
-      await verifyEmail(pendingEmail);
-      toast.success("Email verified. You can sign in now.");
-      router.replace("/sign-in");
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Verification failed.");
-    }
-  }
-
   if (pendingEmail) {
     return (
       <Card>
@@ -86,9 +75,6 @@ export default function SignUpPage() {
         <CardFooter className="mt-4 flex-col gap-2 pb-6">
           <Button className="w-full" render={<Link href="/sign-in" />}>
             Back to sign in
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleMockVerify}>
-            Demo shortcut: mark email as verified
           </Button>
         </CardFooter>
       </Card>
