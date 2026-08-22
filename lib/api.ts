@@ -361,52 +361,49 @@ export interface LeaveFilter {
   status?: LeaveStatus;
 }
 
+function mapLeaveRequest(r: any): LeaveRequest {
+  const reviewerName = r.reviewer?.profile
+    ? `${r.reviewer.profile.firstName} ${r.reviewer.profile.lastName}`.trim()
+    : r.reviewerId || null;
+
+  return {
+    id: r.id,
+    employeeId: r.userId,
+    type: r.type.toLowerCase() as LeaveType,
+    fromDate: typeof r.startDate === "string" ? r.startDate.split("T")[0] : new Date(r.startDate).toISOString().split("T")[0],
+    toDate: typeof r.endDate === "string" ? r.endDate.split("T")[0] : new Date(r.endDate).toISOString().split("T")[0],
+    remarks: r.remarks || "",
+    status: r.status.toLowerCase() as LeaveStatus,
+    reviewedBy: reviewerName,
+    reviewComment: r.reviewComment || null,
+    appliedAt: new Date(r.createdAt).toISOString(),
+  };
+}
+
 export async function getLeaves(filter: LeaveFilter = {}): Promise<LeaveRequest[]> {
-  await delay(160);
-  return db.leaves
-    .filter(
-      (l) =>
-        (filter.employeeId === undefined || l.employeeId === filter.employeeId) &&
-        (filter.status === undefined || l.status === filter.status),
-    )
-    .sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))
-    .map((l) => ({ ...l }));
+  const params = new URLSearchParams();
+  if (filter.employeeId) params.set("userId", filter.employeeId);
+  if (filter.status) params.set("status", filter.status);
+
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const data = await fetchApi<{ requests: any[] }>(`/api/leaves${query}`);
+  return data.requests.map(mapLeaveRequest);
 }
 
 export async function applyLeave(
   employeeId: string,
   input: ApplyLeaveInput,
 ): Promise<LeaveRequest> {
-  await delay();
-  requireEmployee(employeeId);
-  if (!input.fromDate || !input.toDate) throw new ApiError("Pick both start and end dates.");
-  if (input.toDate < input.fromDate) {
-    throw new ApiError("End date cannot be before the start date.");
-  }
-  const overlaps = db.leaves.some(
-    (l) =>
-      l.employeeId === employeeId &&
-      (l.status === "pending" || l.status === "approved") &&
-      input.fromDate <= l.toDate &&
-      input.toDate >= l.fromDate,
-  );
-  if (overlaps) {
-    throw new ApiError("You already have a pending or approved leave in this range.");
-  }
-  const request: LeaveRequest = {
-    id: db.nextLeaveId(),
-    employeeId,
-    type: input.type,
-    fromDate: input.fromDate,
-    toDate: input.toDate,
-    remarks: input.remarks.trim(),
-    status: "pending",
-    reviewedBy: null,
-    reviewComment: null,
-    appliedAt: new Date().toISOString(),
-  };
-  db.leaves.push(request);
-  return { ...request };
+  const data = await fetchApi<{ message: string; request: any }>("/api/leaves", {
+    method: "POST",
+    body: JSON.stringify({
+      type: input.type.toUpperCase(),
+      startDate: input.fromDate,
+      endDate: input.toDate,
+      remarks: input.remarks,
+    }),
+  });
+  return mapLeaveRequest(data.request);
 }
 
 export async function reviewLeave(
@@ -415,17 +412,14 @@ export async function reviewLeave(
   reviewerRole: Role,
   input: ReviewLeaveInput,
 ): Promise<LeaveRequest> {
-  await delay();
-  if (reviewerRole !== "admin") throw new ApiError("Only Admin/HR can review leave requests.");
-  const leave = db.leaves.find((l) => l.id === leaveId);
-  if (!leave) throw new ApiError("Leave request not found.");
-  if (leave.status !== "pending") {
-    throw new ApiError(`This request has already been ${leave.status}.`);
-  }
-  leave.status = input.decision;
-  leave.reviewComment = input.comment.trim() || null;
-  leave.reviewedBy = requireEmployee(reviewerId).name;
-  return { ...leave };
+  const data = await fetchApi<{ message: string; request: any }>(`/api/leaves/${leaveId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      status: input.decision.toUpperCase(),
+      reviewComment: input.comment,
+    }),
+  });
+  return mapLeaveRequest(data.request);
 }
 
 // ---------------------------------------------------------------------------
