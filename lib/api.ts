@@ -306,64 +306,50 @@ export async function getRecentActivity(session: Session): Promise<ActivityItem[
 // Attendance
 // ---------------------------------------------------------------------------
 
+function mapAttendanceRecord(r: any): AttendanceRecord {
+  return {
+    id: r.id,
+    employeeId: r.userId,
+    date: typeof r.date === "string" ? r.date.split("T")[0] : new Date(r.date).toISOString().split("T")[0],
+    checkInAt: r.checkIn ? new Date(r.checkIn).toISOString() : null,
+    checkOutAt: r.checkOut ? new Date(r.checkOut).toISOString() : null,
+    status: r.status.toLowerCase() as AttendanceStatus,
+  };
+}
+
 export async function getAttendanceRange(
   employeeId: string,
   fromDateIso: string,
   toDateIso: string,
 ): Promise<AttendanceRecord[]> {
-  await delay(150);
-  requireEmployee(employeeId);
-  return db.attendance
-    .filter((r) => r.employeeId === employeeId && r.date >= fromDateIso && r.date <= toDateIso)
-    .map((r) => ({ ...r }));
+  const data = await fetchApi<{ records: any[] }>(
+    `/api/attendance?userId=${encodeURIComponent(employeeId)}&view=weekly&date=${encodeURIComponent(fromDateIso)}`
+  );
+  return data.records.map(mapAttendanceRecord);
 }
 
 export async function getTeamAttendanceRange(
   fromDateIso: string,
   toDateIso: string,
 ): Promise<AttendanceRecord[]> {
-  await delay(180);
-  return db.attendance
-    .filter((r) => r.date >= fromDateIso && r.date <= toDateIso)
-    .map((r) => ({ ...r }));
+  const data = await fetchApi<{ records: any[] }>(
+    `/api/attendance?view=weekly&date=${encodeURIComponent(fromDateIso)}`
+  );
+  return data.records.map(mapAttendanceRecord);
 }
 
 export async function checkIn(employeeId: string): Promise<AttendanceRecord> {
-  await delay();
-  requireEmployee(employeeId);
-  const today = todayISO();
-  const existing = db.attendance.find(
-    (r) => r.employeeId === employeeId && r.date === today,
-  );
-  if (existing) {
-    if (existing.checkInAt) throw new ApiError("You have already checked in today.");
-    existing.checkInAt = new Date().toISOString();
-    existing.status = "present";
-    return { ...existing };
-  }
-  const record: AttendanceRecord = {
-    id: db.nextAttendanceId(),
-    employeeId,
-    date: today,
-    checkInAt: new Date().toISOString(),
-    checkOutAt: null,
-    status: "present",
-  };
-  db.attendance.push(record);
-  return { ...record };
+  const data = await fetchApi<{ message: string; record: any }>("/api/attendance/check-in", {
+    method: "POST",
+  });
+  return mapAttendanceRecord(data.record);
 }
 
 export async function checkOut(employeeId: string): Promise<AttendanceRecord> {
-  await delay();
-  requireEmployee(employeeId);
-  const today = todayISO();
-  const existing = db.attendance.find(
-    (r) => r.employeeId === employeeId && r.date === today,
-  );
-  if (!existing?.checkInAt) throw new ApiError("Check in before checking out.");
-  if (existing.checkOutAt) throw new ApiError("You have already checked out today.");
-  existing.checkOutAt = new Date().toISOString();
-  return { ...existing };
+  const data = await fetchApi<{ message: string; record: any }>("/api/attendance/check-out", {
+    method: "POST",
+  });
+  return mapAttendanceRecord(data.record);
 }
 
 // ---------------------------------------------------------------------------
